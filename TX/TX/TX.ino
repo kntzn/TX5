@@ -4,6 +4,14 @@
  Author:	kntzn
 */
 
+#include <Adafruit_SSD1306.h>
+
+#ifndef SSD1306_128_32 
+#error incorrect display size, check Adafruit_SSD1306.h
+#endif // !SSD1306_128_32 
+ 
+
+
 
 void initialize ()
     { 
@@ -42,6 +50,12 @@ int main ()
     { 
     initialize ();
 
+    Adafruit_SSD1306 display;
+    display.begin (SSD1306_SWITCHCAPVCC, SSD1306_I2C_ADDRESS);
+    display.drawLine (0, 0, 16, 16, WHITE);
+    
+
+    display.display ();
     }
 
 
