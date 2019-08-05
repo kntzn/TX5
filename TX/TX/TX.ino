@@ -4,6 +4,7 @@
  Author:	kntzn
 */
 
+#include "Button.h"
 #include "Pinout.h"
 
 #include <Adafruit_SSD1306.h>
@@ -12,6 +13,7 @@
 #error incorrect display size, check Adafruit_SSD1306.h
 #endif // !SSD1306_128_32 
  
+#include <LowPower.h>
 
 
 
@@ -44,74 +46,45 @@ void initialize ()
 
     // VCC in
     pinMode (A3,         INPUT);
+
+
+    digitalWrite (HC12_SET, HIGH);
+    digitalWrite (POT_PWR,  HIGH);
+
+
+
     }
 
 int main ()
     { 
     initialize ();
 
+    Serial.begin (9600);
+
     Adafruit_SSD1306 display;
     display.begin (SSD1306_SWITCHCAPVCC, SSD1306_I2C_ADDRESS);
-//    display.drawLine (0, 0, 16, 16, WHITE);
     display.clearDisplay ();
     display.display ();
 
-    const auto d = 5;
+    Button b (GPI_TOP);
 
     while (true)
-        { 
-        for (int i = 0; i < 64; i++)
-            { 
-            analogWrite (LED_2_R, 63);
-            analogWrite (LED_2_G, i);
-            analogWrite (LED_2_B, 0);
-            delay (d);
-            }
+        {
+        b.upd ();
 
-        for (int i = 0; i < 64; i++)
-            {
-            analogWrite (LED_2_R, 63 - i);
-            analogWrite (LED_2_G, 63);
-            analogWrite (LED_2_B, 0);
-            delay (d);
-            }
+        display.clearDisplay ();
+        display.setCursor (0, 0);
+        display.setTextSize (2);
+        display.setTextColor (WHITE);
+        display.print (static_cast <int> (b.state ()));
+        display.display ();
 
-        for (int i = 0; i < 64; i++)
-            {
-            analogWrite (LED_2_R, 0);
-            analogWrite (LED_2_G, 63);
-            analogWrite (LED_2_B, i);
-            delay (d);
-            }
+        // LowPower.powerDown (SLEEP_8S, ADC_OFF, BOD_OFF);
+        
+        //digitalWrite (LED_1_R, !digitalRead (LED_1_R));
 
-        for (int i = 0; i < 64; i++)
-            {
-            analogWrite (LED_2_R, 0);
-            analogWrite (LED_2_G, 63 - i);
-            analogWrite (LED_2_B, 63);
-            delay (d);
-            }
-
-        for (int i = 0; i < 64; i++)
-            {
-            analogWrite (LED_2_R, i);
-            analogWrite (LED_2_G, 0);
-            analogWrite (LED_2_B, 63);
-            delay (d);
-            }
-
-        for (int i = 0; i < 64; i++)
-            {
-            analogWrite (LED_2_R, 63);
-            analogWrite (LED_2_G, 0);
-            analogWrite (LED_2_B, 63 - i);
-            delay (d);
-            }
+        delay (120);
         }
 
 
-    display.display ();
     }
-
-
-
