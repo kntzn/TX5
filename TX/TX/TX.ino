@@ -61,29 +61,38 @@ int main ()
 
     Serial.begin (9600);
 
+    // Display
     Adafruit_SSD1306 display;
     display.begin (SSD1306_SWITCHCAPVCC, SSD1306_I2C_ADDRESS);
-    display.clearDisplay ();
+    display.clearDisplay ();  // TODO: add logo as default value of buffer
     display.display ();
+    display.setTextSize (2);
+    display.setTextColor (WHITE);
 
-    Button b (GPI_TOP);
-
+    // Buttons
+    Button button_left   (GPI_TOP);
+    Button button_select (GPI_MIDDLE);
+    Button button_right  (GPI_BOTTOM);
+    
+    digitalWrite (POT_PWR, HIGH);
+    
     while (true)
         {
-        b.upd ();
-
-        display.clearDisplay ();
-        display.setCursor (0, 0);
-        display.setTextSize (2);
-        display.setTextColor (WHITE);
-        display.print (static_cast <int> (b.state ()));
-        display.display ();
-
-        // LowPower.powerDown (SLEEP_8S, ADC_OFF, BOD_OFF);
+        while (Serial.available ())
+            { 
+            char read = Serial.read ();
         
-        //digitalWrite (LED_1_R, !digitalRead (LED_1_R));
+            if (read == '\n')
+                {
+                display.display ();
+                display.clearDisplay ();
+                display.setCursor (0, 0);
+                }
+            else
+                display.print (read);
+            }
 
-        delay (120);
+        Serial.println (char (constrain (map (analogRead (POT_IN), 0, 1023, 0, 242), 0, 243)));
         }
 
 
