@@ -59,7 +59,9 @@ int main ()
     { 
     initialize ();
 
+    // Communication
     Serial.begin (9600);
+    unsigned long last_send = millis ();
 
     // Display
     Adafruit_SSD1306 display;
@@ -80,8 +82,10 @@ int main ()
         {
         while (Serial.available ())
             { 
+            analogWrite (LED_1_R, 256);
+
             char read = Serial.read ();
-        
+            
             if (read == '\n')
                 {
                 display.display ();
@@ -92,7 +96,14 @@ int main ()
                 display.print (read);
             }
 
-        Serial.println (char (constrain (map (analogRead (POT_IN), 0, 1023, 0, 242), 0, 243)));
+        analogWrite (LED_1_R, 0);
+
+        // Sends limited amount of packets per minute
+        while (millis () - last_send > 50)
+            {
+            Serial.print (char (analogRead (POT_IN) / 4));
+            last_send += 50;
+            }
         }
 
 
