@@ -15,8 +15,6 @@
  
 #include <LowPower.h>
 
-
-
 void initialize ()
     { 
     // inits the microcontroller
@@ -47,12 +45,10 @@ void initialize ()
     // VCC in
     pinMode (A3,         INPUT);
 
-
+    // Disables AT command mode of the HC-12
     digitalWrite (HC12_SET, HIGH);
+    // Activates the pot
     digitalWrite (POT_PWR,  HIGH);
-
-
-
     }
 
 int main ()
@@ -61,49 +57,42 @@ int main ()
 
     // Communication
     Serial.begin (9600);
+    
     unsigned long last_send = millis ();
-
+    
     // Display
     Adafruit_SSD1306 display;
     display.begin (SSD1306_SWITCHCAPVCC, SSD1306_I2C_ADDRESS);
     display.clearDisplay ();  // TODO: add logo as default value of buffer
     display.display ();
-    display.setTextSize (2);
-    display.setTextColor (WHITE);
-
+    
     // Buttons
     Button button_left   (GPI_TOP);
     Button button_select (GPI_MIDDLE);
     Button button_right  (GPI_BOTTOM);
     
-    digitalWrite (POT_PWR, HIGH);
-    
+    // on/off indicator
+    analogWrite (LED_2_G, 5);
+
     while (true)
         {
+        // Currently unused
+        /*
         while (Serial.available ())
             { 
-            analogWrite (LED_1_R, 256);
+            analogWrite (LED_2_R, 50);
 
-            char read = Serial.read ();
-            
-            if (read == '\n')
-                {
-                display.display ();
-                display.clearDisplay ();
-                display.setCursor (0, 0);
-                }
-            else
-                display.print (read);
+            byte read = Serial.read ();
+
+            display.print (int (read));
+            display.display ();
+            display.clearDisplay ();
+            display.setCursor (0, 0);
             }
-
-        analogWrite (LED_1_R, 0);
-
-        // Sends limited amount of packets per minute
-        while (millis () - last_send > 50)
-            {
-            Serial.print (char (analogRead (POT_IN) / 4));
-            last_send += 50;
-            }
+            */
+       
+        // Constantly send bytes with throttle
+        Serial.print (char (analogRead (POT_IN) / 4));
         }
 
 
