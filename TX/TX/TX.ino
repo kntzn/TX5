@@ -74,8 +74,12 @@ int main ()
     // on/off indicator
     analogWrite (LED_2_G, 5);
 
+    
+
     while (true)
         {
+        
+
         // Currently unused
         /*
         while (Serial.available ())
