@@ -7,13 +7,13 @@
 #include "Button.h"
 #include "Pinout.h"
 
+#include "Battery.h"
+
 #include <Adafruit_SSD1306.h>
 
 #ifndef SSD1306_128_32 
 #error incorrect display size, check Adafruit_SSD1306.h
 #endif // !SSD1306_128_32 
- 
-#include <LowPower.h>
 
 void initialize ()
     { 
@@ -74,11 +74,32 @@ int main ()
     // on/off indicator
     analogWrite (LED_2_G, 5);
 
+    Battery battery;
     
 
     while (true)
         {
-        
+        // Button ev. handlers
+        button_left.upd ();
+        button_select.upd ();
+
+        if (button_left.state () == Button::State::press)
+            { 
+            battery.batMeasure (VCC_IN);
+
+            display.clearDisplay ();
+            display.setCursor (0, 0);
+            display.setTextColor (WHITE);
+            display.setTextSize (2);
+            display.print (battery.getBatVoltage ());
+            display.display ();
+            }
+        if (button_select.state () == Button::State::press)
+            { 
+            display.clearDisplay ();
+
+            display.display ();
+            }
 
         // Currently unused
         /*

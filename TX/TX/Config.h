@@ -1,3 +1,3 @@
 #pragma once
 
-#define REF_VOLTAGE 1.1
+#define REF_VOLTAGE 1.12
