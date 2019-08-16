@@ -6,7 +6,7 @@
 
 #include "Button.h"
 #include "Pinout.h"
-
+#include "Comm.h"
 #include "Battery.h"
 
 #include <Adafruit_SSD1306.h>
@@ -76,6 +76,10 @@ int main ()
 
     Battery battery;
     
+    Communication HC12;
+    uint8_t test_buf [PACK_SIZE_MAX + 1] = { 0x02, 0x04, 0x08, 0x16 };
+
+    HC12.sendPacket (test_buf, 4);
 
     while (true)
         {
