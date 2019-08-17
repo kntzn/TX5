@@ -146,6 +146,17 @@ int main ()
 
             display.display ();
             }
+        if (button_select.state () == Button::State::hold)
+            { 
+            //                                            Safety code "RR"
+            HC12.sendCommand (Communication::command::raw, 82 * 256 + 82);
+            HC12.activateRawinput ();
+
+            display.setTextSize (1);
+            display.setCursor (SSD1306_LCDHEIGHT / 2, SSD1306_LCDHEIGHT / 2);
+            display.print ("RAWINPUT ACTIVATED");
+            display.display ();
+            }
         if (button_right.state () == Button::State::press)
             {
             display.clearDisplay ();
@@ -156,72 +167,62 @@ int main ()
             display.display ();
             }
 
-        // Currently unused
-        /*
-        while (Serial.available ())
+        // If single-byte one-way communication is active
+        if (HC12.rawinputActive ())
             { 
-            analogWrite (LED_2_R, 50);
-
-            byte read = Serial.read ();
-
-            display.print (int (read));
-            display.display ();
-            display.clearDisplay ();
-            display.setCursor (0, 0);
+            Serial.write (255 - (analogRead (POT_IN) / 4));
             }
-            */
-       
-        // Constantly send bytes with throttle
-        
-        //Serial.print (char (analogRead (POT_IN) / 4));
-
         // Comm. v2.1 // two-way
-        if (waitingForRequest)
-            { 
-            // Timeout
-            if (millis () - last_request > RESPONSE_TIMEOUT)
-                {
-                waitingForRequest = false;
-                voltage = -1;
-                }
-
-            Communication::response resp;
-            if ((resp = HC12.receiveResponse ()) != 
-                Communication::response::noresp)
-                {
-                switch (resp)
-                    {
-                    case Communication::response::voltage:
-                        {
-                        voltage = (HC12.argbuf ()[0] * 256 + 
-                                   HC12.argbuf ()[1]) / 1000.0;
-                        break;
-                        }
-                    default:
-                        break;
-                    }
-
-                waitingForRequest = false;
-                }
-            }
         else
             { 
-            if (millis () - last_request > REQUEST_PERIOD)
-                { 
-                last_request += REQUEST_PERIOD;
+            if (waitingForRequest)
+                {
+                // Timeout
+                if (millis () - last_request > RESPONSE_TIMEOUT)
+                    {
+                    waitingForRequest = false;
+                    voltage = -1;
+                    }
 
-                waitingForRequest = true;
-                
-                HC12.sendRequest (Communication::command::voltage);
+                Communication::response resp;
+                if ((resp = HC12.receiveResponse ()) !=
+                    Communication::response::noresp)
+                    {
+                    switch (resp)
+                        {
+                        case Communication::response::voltage:
+                            {
+                            voltage = (HC12.argbuf () [0] * 256 +
+                                       HC12.argbuf () [1]) / 1000.0;
+                            break;
+                            }
+                        default:
+                            break;
+                        }
+
+                    waitingForRequest = false;
+                    }
                 }
             else
                 {
-                int pot = 1023 - analogRead (POT_IN);
+                if (millis () - last_request > REQUEST_PERIOD)
+                    {
+                    last_request += REQUEST_PERIOD;
 
-                HC12.sendCommand (Communication::command::throttle, pot);
+                    waitingForRequest = true;
+
+                    HC12.sendRequest (Communication::command::voltage);
+                    }
+                else
+                    {
+                    int pot = 1023 - analogRead (POT_IN);
+
+                    HC12.sendCommand (Communication::command::throttle, pot);
+                    }
                 }
-            }
 
+            }
+        
         
 
         // prevents RX being overfed with packets
