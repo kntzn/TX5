@@ -79,8 +79,7 @@ int main ()
     Communication HC12;
     uint8_t test_buf [PACK_SIZE_MAX + 1] = { 0x02, 0x04, 0x08, 0x16 };
 
-    HC12.sendPacket (test_buf, 4);
-
+    
     while (true)
         {
         // Button ev. handlers
@@ -121,7 +120,17 @@ int main ()
             */
        
         // Constantly send bytes with throttle
-        Serial.print (char (analogRead (POT_IN) / 4));
+        
+        //Serial.print (char (analogRead (POT_IN) / 4));
+
+        // Comm. v2
+        int pot = analogRead (POT_IN);
+        test_buf [0] = 'T';
+        test_buf [1] = pot / 256;
+        test_buf [2] = pot % 256;
+        
+        HC12.sendPacket (test_buf, 3);
+        delay (25);
         }
 
 
