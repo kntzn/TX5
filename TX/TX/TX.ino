@@ -75,16 +75,20 @@ int main ()
     analogWrite (LED_2_G, 5);
 
     Battery battery;
+    double voltage = 0.0;
     
     Communication HC12;
     uint8_t test_buf [PACK_SIZE_MAX + 1] = { 0x02, 0x04, 0x08, 0x16 };
+    unsigned long int last_request = millis ();
+    bool waitingForRequest = false;
 
-    
     while (true)
         {
         // Button ev. handlers
         button_left.upd ();
         button_select.upd ();
+        button_right.upd ();
+
 
         if (button_left.state () == Button::State::press)
             { 
@@ -101,6 +105,15 @@ int main ()
             { 
             display.clearDisplay ();
 
+            display.display ();
+            }
+        if (button_right.state () == Button::State::press)
+            {
+            display.clearDisplay ();
+            display.setCursor (0, 0);
+            display.setTextColor (WHITE);
+            display.setTextSize (2);
+            display.print (voltage);
             display.display ();
             }
 
@@ -123,14 +136,51 @@ int main ()
         
         //Serial.print (char (analogRead (POT_IN) / 4));
 
-        // Comm. v2
-        int pot = analogRead (POT_IN);
-        test_buf [0] = 'T';
-        test_buf [1] = pot / 256;
-        test_buf [2] = pot % 256;
+        // Comm. v2.1 // two-way
+        if (waitingForRequest)
+            { 
+            // Timeout
+            if (millis () - last_request > 100)
+                {
+                waitingForRequest = false;
+                voltage = -1;
+                }
+
+            if (HC12.receivePacket (test_buf) == 3)
+                { 
+                if (test_buf [0] = 'v')
+                    voltage = test_buf [1] / 10.0;
+
+                waitingForRequest - false;
+                }
+            }
+        else
+            { 
+            if (millis () - last_request > 1000)
+                { 
+                last_request += 1000;
+
+                test_buf [0] = 'V';
+
+                HC12.sendPacket (test_buf, 3);
+
+                waitingForRequest = true;
+                }
+            else
+                {
+                int pot = analogRead (POT_IN);
+                test_buf [0] = 'T';
+                test_buf [1] = pot / 256;
+                test_buf [2] = pot % 256;
+
+                HC12.sendPacket (test_buf, 3);
+                }
+            }
+
         
-        HC12.sendPacket (test_buf, 3);
-        delay (25);
+
+        // Just to not overfeed the RX with packets
+        delay (5);
         }
 
 
