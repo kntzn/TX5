@@ -140,46 +140,52 @@ int main ()
         if (waitingForRequest)
             { 
             // Timeout
-            if (millis () - last_request > 100)
+            if (millis () - last_request > RESPONSE_TIMEOUT)
                 {
                 waitingForRequest = false;
                 voltage = -1;
                 }
 
-            if (HC12.receivePacket (test_buf) == 3)
-                { 
-                if (test_buf [0] = 'v')
-                    voltage = test_buf [1] / 10.0;
+            Communication::response resp;
+            if ((resp = HC12.receiveResponse ()) != 
+                Communication::response::noresp)
+                {
+                switch (resp)
+                    {
+                    case Communication::response::voltage:
+                        {
+                        voltage = (HC12.argbuf ()[0] * 256 + 
+                                   HC12.argbuf ()[1]) / 1000.0;
+                        break;
+                        }
+                    default:
+                        break;
+                    }
 
-                waitingForRequest - false;
+                waitingForRequest = false;
                 }
             }
         else
             { 
-            if (millis () - last_request > 1000)
+            if (millis () - last_request > REQUEST_PERIOD)
                 { 
-                last_request += 1000;
-
-                test_buf [0] = 'V';
-
-                HC12.sendPacket (test_buf, 3);
+                last_request += REQUEST_PERIOD;
 
                 waitingForRequest = true;
+                
+                HC12.sendRequest (Communication::command::voltage);
                 }
             else
                 {
-                int pot = analogRead (POT_IN);
-                test_buf [0] = 'T';
-                test_buf [1] = pot / 256;
-                test_buf [2] = pot % 256;
+                int pot = 1023 - analogRead (POT_IN);
 
-                HC12.sendPacket (test_buf, 3);
+                HC12.sendCommand (Communication::command::throttle, pot);
                 }
             }
 
         
 
-        // Just to not overfeed the RX with packets
+        // prevents RX being overfed with packets
         delay (5);
         }
 
