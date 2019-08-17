@@ -11,6 +11,8 @@
 
 #include <Adafruit_SSD1306.h>
 
+#define drawSexyStartupLogo drawStartupLogo
+
 #ifndef SSD1306_128_32 
 #error incorrect display size, check Adafruit_SSD1306.h
 #endif // !SSD1306_128_32 
@@ -51,6 +53,47 @@ void initialize ()
     digitalWrite (POT_PWR,  HIGH);
     }
 
+void drawStartupLogo (Adafruit_SSD1306 &display)
+    {
+    display.display ();
+    delay (500);
+    for (int i = 0; i < SSD1306_LCDHEIGHT / 2; i++)
+        {
+        display.drawFastHLine (0, SSD1306_LCDHEIGHT / 2 - i - 1,
+                               SSD1306_LCDWIDTH, BLACK);
+        display.drawFastHLine (0, SSD1306_LCDHEIGHT / 2 + i,
+                               SSD1306_LCDWIDTH, BLACK);
+
+        display.display ();
+        }
+    
+    // First bunch of text
+    delay (750);
+    display.setCursor (SSD1306_LCDHEIGHT / 4, SSD1306_LCDHEIGHT / 4);
+    display.setTextColor (WHITE);
+    display.setTextSize (2);
+    display.print ("ESK8 ");
+    display.display ();
+    // Second one
+    delay (750);
+    display.setTextSize (1);
+    display.print ("by kntzn");
+    display.display ();
+
+    // Fade to black
+    delay (500);
+    for (int i = 0; i < SSD1306_LCDHEIGHT / 2; i++)
+        {
+        display.drawFastHLine (0, i,
+                               SSD1306_LCDWIDTH, BLACK);
+        display.drawFastHLine (0, SSD1306_LCDHEIGHT - 1 - i,
+                               SSD1306_LCDWIDTH, BLACK);
+
+
+        display.display ();
+        }
+    }
+
 int main ()
     { 
     initialize ();
@@ -58,13 +101,10 @@ int main ()
     // Communication
     Serial.begin (9600);
     
-    unsigned long last_send = millis ();
-    
     // Display
     Adafruit_SSD1306 display;
     display.begin (SSD1306_SWITCHCAPVCC, SSD1306_I2C_ADDRESS);
-    display.clearDisplay ();  // TODO: add logo as default value of buffer
-    display.display ();
+    drawSexyStartupLogo (display);
     
     // Buttons
     Button button_left   (GPI_TOP);
@@ -78,7 +118,6 @@ int main ()
     double voltage = 0.0;
     
     Communication HC12;
-    uint8_t test_buf [PACK_SIZE_MAX + 1] = { 0x02, 0x04, 0x08, 0x16 };
     unsigned long int last_request = millis ();
     bool waitingForRequest = false;
 
