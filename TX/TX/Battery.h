@@ -15,17 +15,18 @@ class Battery
     private:
         double bat_voltage;
 
-        long aver_analog (uint8_t pin, byte times = 50);
+        long aver_analog (uint8_t pin);
 
         long readVcc ();
             
-
     public:
         Battery ();
 
         void batMeasure (byte pin)
             {
-            bat_voltage = readVcc ()*aver_analog (pin, 25U) / 1023 / 1000.0;
+            double new_value = readVcc ()*aver_analog (pin) / 1023 / 1000.0;
+            
+            bat_voltage = bat_voltage * 0.9 + new_value * 0.1;
             }
         double getBatVoltage ()
             {

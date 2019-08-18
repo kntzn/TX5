@@ -115,7 +115,7 @@ int main ()
     analogWrite (LED_2_G, 5);
 
     Battery battery;
-    double voltage = 0.0;
+    double esk8_voltage = 0.0;
     
     Communication HC12;
     unsigned long int last_request = millis ();
@@ -128,51 +128,44 @@ int main ()
         button_select.upd ();
         button_right.upd ();
 
-
-        if (button_left.state () == Button::State::press)
+        battery.batMeasure (VCC_IN);
+        display.clearDisplay ();
+        display.setCursor (0, 0);
+        display.setTextColor (WHITE);
+        display.setTextSize (1);
+        display.print ("TX:   ");
+        display.print (battery.getBatVoltage ());
+        display.print (" V");
+        display.setCursor (0, 8);
+        display.print ("ESK8: ");
+        if (esk8_voltage == -1)
+            display.print ("Not connected");
+        else
             { 
-            battery.batMeasure (VCC_IN);
-
-            display.clearDisplay ();
-            display.setCursor (0, 0);
-            display.setTextColor (WHITE);
-            display.setTextSize (2);
-            display.print (battery.getBatVoltage ());
-            display.display ();
+            display.print (((esk8_voltage) / 6));
+            display.print (" x 6 V");
             }
-        if (button_select.state () == Button::State::press)
-            { 
-            display.clearDisplay ();
+        display.display ();
 
-            display.display ();
-            }
         if (button_select.state () == Button::State::hold)
             { 
-            //                                            Safety code "RR"
-            HC12.sendCommand (Communication::command::raw, 82 * 256 + 82);
+            HC12.sendCommand (Communication::command::raw, 
+                              static_cast <uint16_t> 
+                              (Communication::command::raw_safety));
             HC12.activateRawinput ();
 
             display.setTextSize (1);
-            display.setCursor (SSD1306_LCDHEIGHT / 2, SSD1306_LCDHEIGHT / 2);
+            display.setCursor (SSD1306_LCDHEIGHT / 4, SSD1306_LCDHEIGHT / 2);
             display.print ("RAWINPUT ACTIVATED");
             display.display ();
             }
-        if (button_right.state () == Button::State::press)
-            {
-            display.clearDisplay ();
-            display.setCursor (0, 0);
-            display.setTextColor (WHITE);
-            display.setTextSize (2);
-            display.print (voltage);
-            display.display ();
-            }
-
+        
         // If single-byte one-way communication is active
         if (HC12.rawinputActive ())
             { 
             Serial.write (255 - (analogRead (POT_IN) / 4));
             }
-        // Comm. v2.1 // two-way
+        // else default two-way comm. is used
         else
             { 
             if (waitingForRequest)
@@ -181,7 +174,7 @@ int main ()
                 if (millis () - last_request > RESPONSE_TIMEOUT)
                     {
                     waitingForRequest = false;
-                    voltage = -1;
+                    esk8_voltage = -1;
                     }
 
                 Communication::response resp;
@@ -192,14 +185,15 @@ int main ()
                         {
                         case Communication::response::voltage:
                             {
-                            voltage = (HC12.argbuf () [0] * 256 +
-                                       HC12.argbuf () [1]) / 1000.0;
+                            esk8_voltage = (HC12.argbuf () [0] * 256 +
+                                            HC12.argbuf () [1]) / 1000.0;
                             break;
                             }
                         default:
                             break;
                         }
 
+                    HC12.flush ();
                     waitingForRequest = false;
                     }
                 }
@@ -223,8 +217,6 @@ int main ()
 
             }
         
-        
-
         // prevents RX being overfed with packets
         delay (5);
         }

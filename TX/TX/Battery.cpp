@@ -2,13 +2,27 @@
 
 
 
-long Battery::aver_analog (uint8_t pin, byte times)
+long Battery::aver_analog (uint8_t pin)
     {
-    long value = 0;
-    for (int i = 0; i < times; i++)
-        value += analogRead (pin);
-    value /= times;
-    return value;
+    const int n_measurements = 25;
+    uint16_t analog_readings [n_measurements] = { };
+
+    for (int i = 0; i < n_measurements; i++)
+        analog_readings [i] = analogRead (pin);
+    
+    for (int i = 0; i < n_measurements; i++)
+        for (int j = 0; j < n_measurements - 1; j++)
+            if (analog_readings [j] > analog_readings [j + 1])
+                {
+                uint16_t tmp            = analog_readings [j];
+                analog_readings [j]     = analog_readings [j + 1];
+                analog_readings [j + 1] = tmp;
+                }   
+
+    return ((n_measurements % 2) ? 
+            (analog_readings [n_measurements / 2]) :
+            (analog_readings [(n_measurements / 2)] + 
+             analog_readings [(n_measurements / 2) - 1]) / 2);
     }
 
 long Battery::readVcc ()
@@ -34,6 +48,7 @@ long Battery::readVcc ()
     }
 
 
-Battery::Battery ()
+Battery::Battery ():
+    bat_voltage (3.7)
     {
     }
