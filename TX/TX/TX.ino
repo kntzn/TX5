@@ -8,6 +8,7 @@
 #include "Pinout.h"
 #include "Comm.h"
 #include "Battery.h"
+#include "SysConfig.h"
 
 #include <Adafruit_SSD1306.h>
 
@@ -116,9 +117,11 @@ int main ()
 
     Battery battery;
     double esk8_voltage = 0.0;
-    
+    uint8_t current_mode = mode::normal;
+
     Communication HC12;
     unsigned long int last_request = millis ();
+
     bool waitingForRequest = false;
 
     while (true)
@@ -128,6 +131,32 @@ int main ()
         button_select.upd ();
         button_right.upd ();
 
+
+        if (button_select.state () == Button::State::hold)
+            {
+            HC12.sendCommand (Communication::command::raw,
+                              static_cast <uint16_t>
+                              (Communication::command::raw_safety));
+            HC12.activateRawinput ();
+            }
+
+        if (button_left.state () == Button::State::press)
+            {
+            if (current_mode < mode::sport)
+                current_mode++;
+
+            HC12.sendCommand (Communication::command::mode, current_mode * 256);
+            }
+        if (button_right.state () == Button::State::press)
+            {
+            if (current_mode > mode::lock)
+                current_mode--;
+
+            HC12.sendCommand (Communication::command::mode, current_mode * 256);
+            }
+
+
+        // Main scr.
         battery.batMeasure (VCC_IN);
         display.clearDisplay ();
         display.setCursor (0, 0);
@@ -138,28 +167,22 @@ int main ()
         display.print (" V");
         display.setCursor (0, 8);
         display.print ("ESK8: ");
-        if (esk8_voltage == -1)
+        if (HC12.rawinputActive ())
+            { 
+            display.print ("RAWIN");
+            }
+        else if (esk8_voltage == -1)
             display.print ("Not connected");
         else
             { 
             display.print (((esk8_voltage) / 6));
-            display.print (" x 6 V");
+            display.print (" V/cell");
             }
+
+
+
         display.display ();
 
-        if (button_select.state () == Button::State::hold)
-            { 
-            HC12.sendCommand (Communication::command::raw, 
-                              static_cast <uint16_t> 
-                              (Communication::command::raw_safety));
-            HC12.activateRawinput ();
-
-            display.setTextSize (1);
-            display.setCursor (SSD1306_LCDHEIGHT / 4, SSD1306_LCDHEIGHT / 2);
-            display.print ("RAWINPUT ACTIVATED");
-            display.display ();
-            }
-        
         // If single-byte one-way communication is active
         if (HC12.rawinputActive ())
             { 
