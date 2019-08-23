@@ -69,7 +69,6 @@ void drawStartupLogo (Adafruit_SSD1306 &display)
         }
     
     // First bunch of text
-    delay (750);
     display.setCursor (SSD1306_LCDHEIGHT / 4, SSD1306_LCDHEIGHT / 4);
     display.setTextColor (WHITE);
     display.setTextSize (2);
@@ -169,18 +168,42 @@ int main ()
         display.print ("ESK8: ");
         if (HC12.rawinputActive ())
             { 
-            display.print ("RAWIN");
+            display.print ("RAW");
             }
         else if (esk8_voltage == -1)
-            display.print ("Not connected");
+            display.print ("-.-- V");
         else
             { 
             display.print (((esk8_voltage) / 6));
-            display.print (" V/cell");
+            display.print (" V");
             }
 
+        
 
-
+        display.setCursor (SSD1306_LCDWIDTH * 5 / 8 + 3, 0 + 1);
+        display.drawRect  (SSD1306_LCDWIDTH * 5 / 8,     0,     16 + 1, 16 + 1, WHITE);
+        display.setTextSize (2);
+        
+        switch (current_mode)
+            {
+            case mode::lock:
+                display.print ('P');
+                break;
+            case mode::neutral:
+                display.print ('N');
+                break;
+            case mode::eco:
+                display.print ('E');
+                break;
+            case mode::normal:
+                display.print ('D');
+                break;
+            case mode::sport:
+                display.print ('S');
+                break;
+            default:
+                break;
+            }
         display.display ();
 
         // If single-byte one-way communication is active
