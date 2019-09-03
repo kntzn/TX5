@@ -88,10 +88,84 @@ void drawStartupLogo (Adafruit_SSD1306 &display)
                                SSD1306_LCDWIDTH, BLACK);
         display.drawFastHLine (0, SSD1306_LCDHEIGHT - 1 - i,
                                SSD1306_LCDWIDTH, BLACK);
-
-
         display.display ();
         }
+    }
+
+void drawMainScreen  (Adafruit_SSD1306 &display,
+                      Battery &battery, Communication &HC12,
+                      double esk8_voltage, double esk8_speed,
+                      uint16_t current_mode, unsigned long latency)
+    { 
+    display.clearDisplay ();
+    display.setCursor (0, 0);
+    display.setTextColor (WHITE);
+    display.setTextSize (1);
+    display.print ("TX:   ");
+    display.print (battery.getBatVoltage ());
+    display.print (" V");
+    display.setCursor (0, 8);
+    display.print ("ESK8: ");
+    if (HC12.rawinputActive ())
+        {
+        display.print ("RAW");
+        }
+    else if (esk8_voltage == -1)
+        display.print ("-.-- V");
+    else
+        {
+        display.print (((esk8_voltage) / 6));
+        display.print (" V");
+        }
+
+    display.setCursor (SSD1306_LCDWIDTH / 8, SSD1306_LCDHEIGHT / 2);
+    display.setTextSize (2);
+
+    if (HC12.rawinputActive ())
+        {
+        display.print ("RAW km/h");
+        }
+    else if (esk8_speed == -1)
+        display.print ("--  km/h");
+    else
+        {
+        if (esk8_speed < 10.0)
+            display.print (' ');
+
+        display.print (round (esk8_speed), 0);
+        display.print (" km/h");
+        }
+
+    display.setCursor (SSD1306_LCDWIDTH * 5 / 8 + 3, 0 + 1);
+    display.drawRect (SSD1306_LCDWIDTH * 5 / 8, 0, 16 + 1, 16 + 1, WHITE);
+    display.setTextSize (2);
+
+    switch (current_mode)
+        {
+        case mode::lock:
+            display.print ('P');
+            break;
+        case mode::neutral:
+            display.print ('N');
+            break;
+        case mode::eco:
+            display.print ('E');
+            break;
+        case mode::normal:
+            display.print ('D');
+            break;
+        case mode::sport:
+            display.print ('S');
+            break;
+        default:
+            break;
+        }
+
+    display.setTextSize (1);
+    display.print (" ");
+    display.print (latency);
+    display.print ("ms");
+    display.display ();
     }
 
 int main ()
@@ -115,10 +189,14 @@ int main ()
     analogWrite (LED_2_G, 5);
 
     Battery battery;
+
     double esk8_voltage = 0.0;
+    double esk8_speed   = 0.0;
     uint8_t current_mode = mode::normal;
 
     Communication HC12;
+    unsigned long int latency = 0;
+    uint8_t last_req_id = 0;
     unsigned long int last_request = millis ();
 
     bool waitingForRequest = false;
@@ -130,7 +208,6 @@ int main ()
         button_select.upd ();
         button_right.upd ();
 
-
         if (button_select.state () == Button::State::hold)
             {
             HC12.sendCommand (Communication::command::raw,
@@ -138,7 +215,6 @@ int main ()
                               (Communication::command::raw_safety));
             HC12.activateRawinput ();
             }
-
         if (button_left.state () == Button::State::press)
             {
             if (current_mode < mode::sport)
@@ -154,63 +230,17 @@ int main ()
             HC12.sendCommand (Communication::command::mode, current_mode * 256);
             }
 
+        drawMainScreen (display,
+                        battery, HC12, 
+                        esk8_voltage, esk8_speed,
+                        current_mode, latency);
 
         // Main scr.
         battery.batMeasure (VCC_IN);
-        display.clearDisplay ();
-        display.setCursor (0, 0);
-        display.setTextColor (WHITE);
-        display.setTextSize (1);
-        display.print ("TX:   ");
-        display.print (battery.getBatVoltage ());
-        display.print (" V");
-        display.setCursor (0, 8);
-        display.print ("ESK8: ");
-        if (HC12.rawinputActive ())
-            { 
-            display.print ("RAW");
-            }
-        else if (esk8_voltage == -1)
-            display.print ("-.-- V");
-        else
-            { 
-            display.print (((esk8_voltage) / 6));
-            display.print (" V");
-            }
-
-        
-
-        display.setCursor (SSD1306_LCDWIDTH * 5 / 8 + 3, 0 + 1);
-        display.drawRect  (SSD1306_LCDWIDTH * 5 / 8,     0,     16 + 1, 16 + 1, WHITE);
-        display.setTextSize (2);
-        
-        switch (current_mode)
-            {
-            case mode::lock:
-                display.print ('P');
-                break;
-            case mode::neutral:
-                display.print ('N');
-                break;
-            case mode::eco:
-                display.print ('E');
-                break;
-            case mode::normal:
-                display.print ('D');
-                break;
-            case mode::sport:
-                display.print ('S');
-                break;
-            default:
-                break;
-            }
-        display.display ();
-
+       
         // If single-byte one-way communication is active
         if (HC12.rawinputActive ())
-            { 
             Serial.write (255 - (analogRead (POT_IN) / 4));
-            }
         // else default two-way comm. is used
         else
             { 
@@ -221,18 +251,29 @@ int main ()
                     {
                     waitingForRequest = false;
                     esk8_voltage = -1;
+                    esk8_speed   = -1;
                     }
 
                 Communication::response resp;
                 if ((resp = HC12.receiveResponse ()) !=
                     Communication::response::noresp)
                     {
+                    // Calculates the delay between TX/RX
+                    latency = (millis () - last_request) / 2;
+
                     switch (resp)
                         {
                         case Communication::response::voltage:
                             {
                             esk8_voltage = (HC12.argbuf () [0] * 256 +
                                             HC12.argbuf () [1]) / 1000.0;
+                            break;
+                            }
+                        case Communication::response::speed:
+                            { 
+                            esk8_speed = (HC12.argbuf () [0] * 256 +
+                                          HC12.argbuf () [1]) / 1000.0;
+                            
                             break;
                             }
                         default:
@@ -251,21 +292,27 @@ int main ()
 
                     waitingForRequest = true;
 
-                    HC12.sendRequest (Communication::command::voltage);
+                    if (last_req_id == 0)
+                        HC12.sendRequest (Communication::command::voltage);
+                    if (last_req_id == 1)
+                        HC12.sendRequest (Communication::command::speed);
+
+                    (++last_req_id) %= 2;
                     }
                 else
                     {
                     int pot = 1023 - analogRead (POT_IN);
 
+                    // TODO: RM the software belt slipp. fix
+                    pot = constrain (pot, 100, 1024);
+
                     HC12.sendCommand (Communication::command::throttle, pot);
                     }
                 }
-
             }
         
         // prevents RX being overfed with packets
         delay (5);
         }
-
-
     }
+
