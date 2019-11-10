@@ -15,7 +15,7 @@
 #define drawSexyStartupLogo drawStartupLogo
 
 #ifndef SSD1306_128_32 
-#error incorrect display size, check Adafruit_SSD1306.h
+	#error incorrect display size, check Adafruit_SSD1306.h
 #endif // !SSD1306_128_32 
 
 void initialize ()
@@ -178,7 +178,7 @@ int main ()
     // Display
     Adafruit_SSD1306 display;
     display.begin (SSD1306_SWITCHCAPVCC, SSD1306_I2C_ADDRESS);
-    drawSexyStartupLogo (display);
+    drawSexyStartupLogo (display); 
     
     // Buttons
     Button button_left   (GPI_TOP);
@@ -198,6 +198,7 @@ int main ()
     unsigned long int latency = 0;
     uint8_t last_req_id = 0;
     unsigned long int last_request = millis ();
+	bool lights_on = false;
 
     bool waitingForRequest = false;
 
@@ -215,19 +216,25 @@ int main ()
                               (Communication::command::raw_safety));
             HC12.activateRawinput ();
             }
-        if (button_left.state () == Button::State::press)
+        if (button_left.state () == Button::State::released)
             {
-            if (current_mode < mode::sport)
-                current_mode++;
+			current_mode = 2 + (++current_mode - 2) % 3;
 
             HC12.sendCommand (Communication::command::mode, current_mode * 256);
             }
+		if (button_left.state() == Button::State::hold)
+			{
+			current_mode = 1;
+
+			HC12.sendCommand(Communication::command::mode, current_mode * 256);
+			}
         if (button_right.state () == Button::State::press)
             {
-            if (current_mode > mode::lock)
-                current_mode--;
+			lights_on = !lights_on;
+			//       key = 255 (byte #1, fl)     + 255 (byte #2, bl)
+			uint16_t key = 255 * (256)*lights_on + 255 * lights_on;
 
-            HC12.sendCommand (Communication::command::mode, current_mode * 256);
+			HC12.sendCommand(Communication::command::lights, key);
             }
 
         drawMainScreen (display,
