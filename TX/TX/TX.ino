@@ -132,7 +132,8 @@ void drawMainScreen  (Adafruit_SSD1306 &display,
         if (esk8_speed < 10.0)
             display.print (' ');
 
-        display.print (round (esk8_speed), 0);
+		// TODO: improve rounding fix
+        display.print (double (esk8_speed + 0.5), 0);
         display.print (" km/h");
         }
 
@@ -209,6 +210,7 @@ int main ()
         button_select.upd ();
         button_right.upd ();
 
+		// TODO: move content to separate functions
         if (button_select.state () == Button::State::hold)
             {
             HC12.sendCommand (Communication::command::raw,
